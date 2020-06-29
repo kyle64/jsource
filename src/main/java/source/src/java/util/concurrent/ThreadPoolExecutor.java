@@ -627,7 +627,7 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
         }
 
         protected boolean tryAcquire(int unused) {
-            if (compareAndSetState(0, 1)) {
+            if (compareAndSetState(0, 1)) { // CAS尝试设置独占
                 setExclusiveOwnerThread(Thread.currentThread());
                 return true;
             }

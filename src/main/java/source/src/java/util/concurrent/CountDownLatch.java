@@ -169,6 +169,7 @@ public class CountDownLatch {
             return getState();
         }
 
+        // await -> acquireSharedInterruptibly -> doAcquireSharedInterruptibly -> tryAcquireShared
         protected int tryAcquireShared(int acquires) {
             return (getState() == 0) ? 1 : -1; // state为0才成功
         }

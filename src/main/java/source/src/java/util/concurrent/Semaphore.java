@@ -150,6 +150,16 @@ import java.util.concurrent.locks.AbstractQueuedSynchronizer;
  * actions following a successful "acquire" method such as {@code acquire()}
  * in another thread.
  *
+ * 所谓 Semaphore 即 信号量 的意思。
+ * 	这个叫法并不能很好地表示它的作用，更形象的说法应该是 许可证管理器 。
+ *
+ * 	Semaphore 是一个计数信号量。
+ *
+ * 	从概念上将，Semaphore 包含一组许可证。
+ * 	如果有需要的话，每个 acquire() 方法都会阻塞，直到获取一个可用的许可证。
+ * 	每个 release() 方法都会释放持有许可证的线程，并且归还 Semaphore 一个可用的许可证。
+ * 	然而，实际上并没有真实的许可证对象供线程使用，Semaphore 只是对可用的数量进行管理维护。
+ *
  * @since 1.5
  * @author Doug Lea
  */
@@ -178,7 +188,7 @@ public class Semaphore implements java.io.Serializable {
             for (;;) {
                 int available = getState();
                 int remaining = available - acquires;
-                if (remaining < 0 ||
+                if (remaining < 0 || // 剩余许可(扣除当前获取) > 0 且CAS成功
                     compareAndSetState(available, remaining))
                     return remaining;
             }
