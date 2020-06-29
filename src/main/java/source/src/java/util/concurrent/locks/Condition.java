@@ -47,6 +47,10 @@ import java.util.Date;
  * and statements, a {@code Condition} replaces the use of the Object
  * monitor methods.
  *
+ * Condition和Object的监视器的wait、notify、notifyAll相比，进行了一些拓展。
+ * 使用Lock锁来替代synchronized
+ * 使用Condition来替代Object的监视器方法
+ *
  * <p>Conditions (also known as <em>condition queues</em> or
  * <em>condition variables</em>) provide a means for one thread to
  * suspend execution (to &quot;wait&quot;) until notified by another
@@ -56,6 +60,8 @@ import java.util.Date;
  * condition. The key property that waiting for a condition provides
  * is that it <em>atomically</em> releases the associated lock and
  * suspends the current thread, just like {@code Object.wait}.
+ *
+ * Condition提供了一种线程挂起／唤醒的途径，必须和Lock绑定；Condition支持原子的释放／挂起，类似Object.wait
  *
  * <p>A {@code Condition} instance is intrinsically bound to a lock.
  * To obtain a {@code Condition} instance for a particular {@link Lock}
@@ -134,6 +140,8 @@ import java.util.Date;
  * It is recommended that to avoid confusion you never use {@code Condition}
  * instances in this way, except perhaps within their own implementation.
  *
+ * Condition也是普通对象，没事别synchronized它，虽然理论上可以，但没啥意义
+ *
  * <p>Except where noted, passing a {@code null} value for any parameter
  * will result in a {@link NullPointerException} being thrown.
  *
@@ -148,6 +156,8 @@ import java.util.Date;
  * free to remove the possibility of spurious wakeups but it is
  * recommended that applications programmers always assume that they can
  * occur and so always wait in a loop.
+ *
+ * 推荐将Condition的 等待 放在循环中，以防止意外的伪唤醒
  *
  * <p>The three forms of condition waiting
  * (interruptible, non-interruptible, and timed) may differ in their ease of
@@ -181,6 +191,8 @@ public interface Condition {
     /**
      * Causes the current thread to wait until it is signalled or
      * {@linkplain Thread#interrupt interrupted}.
+     *
+     * 当前线程等待直到被通知或中断
      *
      * <p>The lock associated with this {@code Condition} is atomically
      * released and the current thread becomes disabled for thread scheduling
@@ -228,7 +240,7 @@ public interface Condition {
      * @throws InterruptedException if the current thread is interrupted
      *         (and interruption of thread suspension is supported)
      */
-    void await() throws InterruptedException;
+    void await() throws InterruptedException; // 当前线程等待直到被通知或中断
 
     /**
      * Causes the current thread to wait until it is signalled.
@@ -264,7 +276,7 @@ public interface Condition {
      * thrown (such as {@link IllegalMonitorStateException}) and the
      * implementation must document that fact.
      */
-    void awaitUninterruptibly();
+    void awaitUninterruptibly(); // 当前线程进入等待状态直到被通知（不响应中断）
 
     /**
      * Causes the current thread to wait until it is signalled or interrupted,
@@ -355,7 +367,8 @@ public interface Condition {
      * @throws InterruptedException if the current thread is interrupted
      *         (and interruption of thread suspension is supported)
      */
-    long awaitNanos(long nanosTimeout) throws InterruptedException;
+    // 当前线程进入等待状态直到被通知或中断或超时。参数表示限定的纳秒数，返回值表示剩余时间，若返回值小于等于零，表明已超时。
+    long awaitNanos(long nanosTimeout) throws InterruptedException; //
 
     /**
      * Causes the current thread to wait until it is signalled or interrupted,
@@ -370,6 +383,7 @@ public interface Condition {
      * @throws InterruptedException if the current thread is interrupted
      *         (and interruption of thread suspension is supported)
      */
+    // 当前线程进入等待状态直到被通知或中断或超时。如果超时仍未被通知就返回false，否则返回true.
     boolean await(long time, TimeUnit unit) throws InterruptedException;
 
     /**
@@ -447,6 +461,7 @@ public interface Condition {
      * @throws InterruptedException if the current thread is interrupted
      *         (and interruption of thread suspension is supported)
      */
+    // 当前线程进入等待状态直到通知或中断或到了指定的某个时间点。如果到了某个时间点仍未获被通知就返回false，否则返回true。
     boolean awaitUntil(Date deadline) throws InterruptedException;
 
     /**
@@ -465,7 +480,7 @@ public interface Condition {
      * not held. Typically, an exception such as {@link
      * IllegalMonitorStateException} will be thrown.
      */
-    void signal();
+    void signal(); // 唤醒一个等待在Condition上的线程
 
     /**
      * Wakes up all waiting threads.
@@ -483,5 +498,5 @@ public interface Condition {
      * not held. Typically, an exception such as {@link
      * IllegalMonitorStateException} will be thrown.
      */
-    void signalAll();
+    void signalAll(); // 唤醒所有等待在些Condtion上的线程。
 }
