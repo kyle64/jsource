@@ -174,6 +174,14 @@ public class LockSupport {
      * @since 1.6
      */
     public static void park(Object blocker) {
+        // 与Object类的wait/notify机制相比，park/unpark有两个优点：
+        //
+        // 1. 以thread为操作对象更符合阻塞线程的直观定义；
+        // 2. 操作更精准，可以准确地唤醒某一个线程（notify随机唤醒一个线程，notifyAll唤醒所有等待的线程），增加了灵活性。
+        // 3. wait/notify前提是synchronize获取锁
+        // ————————————————
+        // 版权声明：本文为CSDN博主「Mutou_ren」的原创文章，遵循CC 4.0 BY-SA版权协议，转载请附上原文出处链接及本声明。
+        // 原文链接：https://blog.csdn.net/Mutou_ren/java/article/details/85056334
         Thread t = Thread.currentThread();
         setBlocker(t, blocker);
         UNSAFE.park(false, 0L);
