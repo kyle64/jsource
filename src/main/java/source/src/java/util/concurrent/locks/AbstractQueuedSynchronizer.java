@@ -1513,7 +1513,7 @@ public abstract class AbstractQueuedSynchronizer
      * #tryAcquireShared}) then it is guaranteed that the current thread
      * is not the first queued thread.  Used only as a heuristic in
      * ReentrantReadWriteLock.
-     * 判断第一个排队的线程是否是独占模式
+     * 判断头节点后第一个排队的线程是否是独占模式
      */
     final boolean apparentlyFirstQueuedIsExclusive() {
         Node h, s;
