@@ -389,6 +389,8 @@ public class FutureTask<V> implements RunnableFuture<V> {
     /**
      * Awaits completion or aborts on interrupt or timeout.
      *
+     * get()方法调用awaitDone挂起等待 除非 中断 或者 超时
+     *
      * @param timed true if use timed waits
      * @param nanos time to wait, if timed
      * @return state upon completion
@@ -399,24 +401,30 @@ public class FutureTask<V> implements RunnableFuture<V> {
         WaitNode q = null;
         boolean queued = false;
         for (;;) {
+            // 如果主线程被中断，则抛出中断异常
             if (Thread.interrupted()) {
                 removeWaiter(q);
                 throw new InterruptedException();
             }
 
             int s = state;
+            // 判断FutureTask当前的state，如果大于COMPLETING，说明任务已经执行完成，则直接返回
             if (s > COMPLETING) {
                 if (q != null)
                     q.thread = null;
                 return s;
             }
+            // 如果当前state等于COMPLETING，说明任务已经执行完，这时主线程只需通过yield方法让出cpu资源，等待state变成NORMAL
             else if (s == COMPLETING) // cannot time out yet
                 Thread.yield();
+            // 创建waitNode
             else if (q == null)
                 q = new WaitNode();
+            // 如果没有加入等待队列，则添加到waiters链表，CAS设置当前节点q为等待队列的起始位置
             else if (!queued)
                 queued = UNSAFE.compareAndSwapObject(this, waitersOffset,
                                                      q.next = waiters, q);
+            // 限时挂起当前线程
             else if (timed) {
                 nanos = deadline - System.nanoTime();
                 if (nanos <= 0L) {
@@ -425,6 +433,7 @@ public class FutureTask<V> implements RunnableFuture<V> {
                 }
                 LockSupport.parkNanos(this, nanos);
             }
+            // 挂起当前线程
             else
                 LockSupport.park(this);
         }

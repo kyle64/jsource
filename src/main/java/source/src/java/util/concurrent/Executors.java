@@ -81,6 +81,8 @@ public class Executors {
      * execute subsequent tasks.  The threads in the pool will exist
      * until it is explicitly {@link ExecutorService#shutdown shutdown}.
      *
+     * 适用：执行长期的任务，性能好很多
+     *
      * @param nThreads the number of threads in the pool
      * @return the newly created thread pool
      * @throws IllegalArgumentException if {@code nThreads <= 0}
@@ -165,6 +167,8 @@ public class Executors {
      * {@code newFixedThreadPool(1)} the returned executor is
      * guaranteed not to be reconfigurable to use additional threads.
      *
+     * 适用：一个任务一个任务执行的场景
+     *
      * @return the newly created single-threaded Executor
      */
     public static ExecutorService newSingleThreadExecutor() {
@@ -209,6 +213,8 @@ public class Executors {
      * not consume any resources. Note that pools with similar
      * properties but different details (for example, timeout parameters)
      * may be created using {@link ThreadPoolExecutor} constructors.
+     *
+     * 适用：执行很多短期异步的小程序或者负载较轻的服务器
      *
      * @return the newly created thread pool
      */
@@ -280,6 +286,9 @@ public class Executors {
      * even if they are idle
      * @return a newly created scheduled thread pool
      * @throws IllegalArgumentException if {@code corePoolSize < 0}
+     *
+     * 适用：周期性执行任务的场景
+     * 
      */
     public static ScheduledExecutorService newScheduledThreadPool(int corePoolSize) {
         return new ScheduledThreadPoolExecutor(corePoolSize);

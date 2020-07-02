@@ -1262,6 +1262,7 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
             // worker的复用其实本质上是由getTask完成的，因为不断的尝试从队列中获取新的任务
             while (task != null || (task = getTask()) != null) {
                 // worker自己的锁，非可重入锁，因为worker线程执行不需要重入
+                // shutdown方法与getTask方法存在竞态条件
                 // 加锁
                 w.lock();
                 // If pool is stopping, ensure thread is interrupted;
@@ -1547,6 +1548,8 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
         try {
             checkShutdownAccess();
             advanceRunState(SHUTDOWN);
+            // interruptIdleWorkers可能会中断worker，所以runWorker执行和shutdown都需要加锁
+            // 中断所有空闲Worker
             interruptIdleWorkers();
             onShutdown(); // hook for ScheduledThreadPoolExecutor
         } finally {
@@ -1949,6 +1952,8 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
     /**
      * Returns the current number of threads in the pool.
      *
+     * 返回当前线程池中的线程数
+     *
      * @return the number of threads
      */
     public int getPoolSize() {
@@ -1967,6 +1972,8 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
     /**
      * Returns the approximate number of threads that are actively
      * executing tasks.
+     *
+     * 返回大致的正在执行任务的线程数
      *
      * @return the number of threads
      */
@@ -1988,6 +1995,8 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
      * Returns the largest number of threads that have ever
      * simultaneously been in the pool.
      *
+     * 返回曾经最大的线程数，返回结果小于等于maximumPoolSize
+     *
      * @return the number of threads
      */
     public int getLargestPoolSize() {
@@ -2005,6 +2014,8 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
      * scheduled for execution. Because the states of tasks and
      * threads may change dynamically during computation, the returned
      * value is only an approximation.
+     *
+     * 返回大概的scheduled任务数
      *
      * @return the number of tasks
      */
@@ -2030,6 +2041,8 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
      * may change dynamically during computation, the returned value
      * is only an approximation, but one that does not ever decrease
      * across successive calls.
+     *
+     * 返回大概的完成的任务数，返回结果少于getTaskCount()
      *
      * @return the number of tasks
      */
