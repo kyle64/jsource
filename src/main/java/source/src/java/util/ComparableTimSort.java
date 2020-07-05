@@ -37,6 +37,12 @@ package java.util;
  * If this is the case, you are better off deleting ComparableTimSort to
  * eliminate the code duplication.  (See Arrays.java for details.)
  *
+ * 注释参考
+ * 作者：张晨辉Allen
+ * 链接：https://www.jianshu.com/p/892ebd063ad9
+ * 来源：简书
+ * 著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。
+ *
  * @author Josh Bloch
  */
 class ComparableTimSort {
@@ -44,6 +50,8 @@ class ComparableTimSort {
      * This is the minimum sized sequence that will be merged.  Shorter
      * sequences will be lengthened by calling binarySort.  If the entire
      * array is less than this length, no merges will be performed.
+     *
+     * 使用归并的最小长度，小于此长度则使用binarySort，不进行归并
      *
      * This constant should be a power of two.  It was 64 in Tim Peter's C
      * implementation, but 32 was empirically determined to work better in
@@ -104,6 +112,9 @@ class ComparableTimSort {
      *
      * so we could cut the storage for this, but it's a minor amount,
      * and keeping all the info explicit simplifies the code.
+     *
+     * 存储需要归并的run的栈
+     *
      */
     private int stackSize = 0;  // Number of pending runs on stack
     private final int[] runBase;
@@ -168,24 +179,31 @@ class ComparableTimSort {
      * any necessary array bounds checks and expanding parameters into
      * the required forms.
      *
+     * Timsort是结合了合并排序（merge sort）和插入排序（insertion sort）而得出的排序算法，它在现实中有很好的效率。
+     *
      * @param a the array to be sorted
-     * @param lo the index of the first element, inclusive, to be sorted
-     * @param hi the index of the last element, exclusive, to be sorted
-     * @param work a workspace array (slice)
+     * @param lo the index of the first element, inclusive, to be sorted 第一个元素的下标，包含（闭区间）
+     * @param hi the index of the last element, exclusive, to be sorted 最后一个元素的下标，不包含（开区间）
+     * @param work a workspace array (slice) 工作空间
      * @param workBase origin of usable space in work array
      * @param workLen usable size of work array
      * @since 1.8
      */
     static void sort(Object[] a, int lo, int hi, Object[] work, int workBase, int workLen) {
+        // 检查lo, hi的范围
         assert a != null && lo >= 0 && lo <= hi && hi <= a.length;
 
         int nRemaining  = hi - lo;
+        // 当长度为0或1时永远都是已经排序状态
         if (nRemaining < 2)
             return;  // Arrays of size 0 and 1 are always sorted
 
         // If array is small, do a "mini-TimSort" with no merges
+        // 数组个数小于32的时候，使用binarySort（插入排序的变种，查找插入位置的时候使用二分查找）
         if (nRemaining < MIN_MERGE) {
+            // 找到从lo开始最长的连续升序的长度（单调递增的长度）
             int initRunLen = countRunAndMakeAscending(a, lo, hi);
+            // 二分插入排序
             binarySort(a, lo, hi, lo + initRunLen);
             return;
         }
@@ -195,25 +213,41 @@ class ComparableTimSort {
          * extending short natural runs to minRun elements, and merging runs
          * to maintain stack invariant.
          */
+
+        // 数组大于32时， 先算出一个合适的大小，在将输入按其升序和降序特点进行了分区。
+        // 排序的输入的单位不是一个个单独的数字，而是一个个的块-分区。其中每一个分区叫一个run。
+        // 针对这些 run 序列，每次拿一个run出来按规则进行合并。每次合并会将两个run合并成一个 run。合并的结果保存到栈中。
+        // 合并直到消耗掉所有的run，这时将栈上剩余的 run合并到只剩一个 run 为止。
+        // 这时这个仅剩的 run 便是排好序的结果。
         ComparableTimSort ts = new ComparableTimSort(a, work, workBase, workLen);
+        // 计算minRun的长度（MIN_MERGE/2 <= minRun <= MIN_MERGE）
         int minRun = minRunLength(nRemaining);
         do {
             // Identify next run
+            // 找到从lo开始最长的连续升序的长度（单调递增的长度）
             int runLen = countRunAndMakeAscending(a, lo, hi);
 
             // If run is short, extend to min(minRun, nRemaining)
+            // 如果连续递增的run长度小于规定的minRun长度，先进行二分插入排序
             if (runLen < minRun) {
+                // 剩余待排序nRemaining 和 minRun中小的那个
                 int force = nRemaining <= minRun ? nRemaining : minRun;
+                // a[lo]到a[lo + runLen]都是升序的（不包括a[lo + runLen]）
                 binarySort(a, lo, lo + force, lo + runLen);
-                runLen = force;
+                // 排序后a[lo]到a[lo + force]都是升序的（包括[lo + force]）
+                runLen = force; // 给runLen赋值为force
             }
 
             // Push run onto pending-run stack, and maybe merge
+            // 将可能要归并的run入栈
             ts.pushRun(lo, runLen);
+            // 进行归并操作
             ts.mergeCollapse();
 
             // Advance to find next run
+            // 后移runLen，继续迭代
             lo += runLen;
+            // 减少剩余待排序nRemaining
             nRemaining -= runLen;
         } while (nRemaining != 0);
 
@@ -243,9 +277,11 @@ class ComparableTimSort {
     @SuppressWarnings({"fallthrough", "rawtypes", "unchecked"})
     private static void binarySort(Object[] a, int lo, int hi, int start) {
         assert lo <= start && start <= hi;
+        // start之前应该全部是递增的
         if (start == lo)
             start++;
         for ( ; start < hi; start++) {
+            // 轴点
             Comparable pivot = (Comparable) a[start];
 
             // Set left (and right) to the index where a[start] (pivot) belongs
@@ -256,14 +292,18 @@ class ComparableTimSort {
              * Invariants:
              *   pivot >= all in [lo, left).
              *   pivot <  all in [right, start).
+             *   左边都比pivot小，右边都比pivot大
              */
+            // 寻找pivot位置，left到right之前（也就是pivot前一个位置）都是升序的，所以二分查找位置
             while (left < right) {
                 int mid = (left + right) >>> 1;
+                // 跟mid位置的数比较
                 if (pivot.compareTo(a[mid]) < 0)
                     right = mid;
                 else
                     left = mid + 1;
             }
+            // 找到start元素需要插入的位置
             assert left == right;
 
             /*
@@ -273,14 +313,16 @@ class ComparableTimSort {
              * first slot after them -- that's why this sort is stable.
              * Slide elements over to make room for pivot.
              */
-            int n = start - left;  // The number of elements to move
+            int n = start - left;  // The number of elements to move 需要向后移动的元素数量
             // Switch is just an optimization for arraycopy in default case
+            // 使用switch进行优化，移动个数少于等于2的时候，复制元素，避免使用arraycopy
             switch (n) {
                 case 2:  a[left + 2] = a[left + 1];
                 case 1:  a[left + 1] = a[left];
                          break;
                 default: System.arraycopy(a, left, a, left + 1, n);
             }
+            // 在目标位置插入pivot
             a[left] = pivot;
         }
     }
@@ -316,6 +358,7 @@ class ComparableTimSort {
         if (runHi == hi)
             return 1;
 
+        // 找出最大的递增或者递减的个数，如果递减，则此段数组严格反一下方向
         // Find end of run, and reverse range if descending
         if (((Comparable) a[runHi++]).compareTo(a[lo]) < 0) { // Descending
             while (runHi < hi && ((Comparable) a[runHi]).compareTo(a[runHi - 1]) < 0)
@@ -356,6 +399,7 @@ class ComparableTimSort {
      *  Else if n is an exact power of 2, return MIN_MERGE/2.
      *  Else return an int k, MIN_MERGE/2 <= k <= MIN_MERGE, such that n/k
      *   is close to, but strictly less than, an exact power of 2.
+     *  计算run length，MIN_MERGE/2 <= k <= MIN_MERGE
      *
      * For the rationale, see listsort.txt.
      *
@@ -374,6 +418,8 @@ class ComparableTimSort {
 
     /**
      * Pushes the specified run onto the pending-run stack.
+     * 将特定的run入栈
+     * 符合runBase[i] + runLen[i] == runBase[i + 1]
      *
      * @param runBase index of the first element in the run
      * @param runLen  the number of elements in the run
@@ -387,6 +433,7 @@ class ComparableTimSort {
     /**
      * Examines the stack of runs waiting to be merged and merges adjacent runs
      * until the stack invariants are reestablished:
+     * 直到遇到以下两个条件，不然就一直归并相邻的run
      *
      *     1. runLen[i - 3] > runLen[i - 2] + runLen[i - 1]
      *     2. runLen[i - 2] > runLen[i - 1]
@@ -395,14 +442,18 @@ class ComparableTimSort {
      * so the invariants are guaranteed to hold for i < stackSize upon
      * entry to the method.
      */
+    // 后两个分区的和大于前一个分区，则中间的分区与最小的分区先合并
+    // 否则合并后两个分区
     private void mergeCollapse() {
         while (stackSize > 1) {
             int n = stackSize - 2;
+            // 后两个分区的和大于前一个分区，则中间的分区与最小的分区先合并
             if (n > 0 && runLen[n-1] <= runLen[n] + runLen[n+1]) {
                 if (runLen[n - 1] < runLen[n + 1])
                     n--;
                 mergeAt(n);
             } else if (runLen[n] <= runLen[n + 1]) {
+                // 后一个分区run长度大于等于前一个，那就归并
                 mergeAt(n);
             } else {
                 break; // Invariant is established
@@ -413,6 +464,7 @@ class ComparableTimSort {
     /**
      * Merges all runs on the stack until only one remains.  This method is
      * called once, to complete the sort.
+     * 合并到只剩一个剩余的run
      */
     private void mergeForceCollapse() {
         while (stackSize > 1) {
@@ -428,10 +480,14 @@ class ComparableTimSort {
      * the penultimate or antepenultimate run on the stack.  In other words,
      * i must be equal to stackSize-2 or stackSize-3.
      *
+     * 合并在栈中位于i和i+1的两个相邻的升序序列。 i必须为从栈顶数，第二和第三个元素。
+     * 换句话说i == stackSize - 2 || i == stackSize - 3
+     *
      * @param i stack index of the first of the two runs to merge
      */
     @SuppressWarnings("unchecked")
     private void mergeAt(int i) {
+        // 校验
         assert stackSize >= 2;
         assert i >= 0;
         assert i == stackSize - 2 || i == stackSize - 3;
@@ -447,8 +503,14 @@ class ComparableTimSort {
          * Record the length of the combined runs; if i is the 3rd-last
          * run now, also slide over the last run (which isn't involved
          * in this merge).  The current run (i+1) goes away in any case.
+         *
+         * 记录合并后的序列的长度；如果i == stackSize - 3 就把最后一个序列的信息
+         * 往前移一位，因为本次合并不关它的事。i+1对应的序列被合并到i序列中了，所以
+         * i+1 数列可以消失了
          */
+        // 记录新的长度
         runLen[i] = len1 + len2;
+        // 如果i == stackSize - 3 就把最后一个序列（也就是i+1）的信息前移
         if (i == stackSize - 3) {
             runBase[i + 1] = runBase[i + 2];
             runLen[i + 1] = runLen[i + 2];
@@ -458,9 +520,11 @@ class ComparableTimSort {
         /*
          * Find where the first element of run2 goes in run1. Prior elements
          * in run1 can be ignored (because they're already in place).
+         * 找出第二个序列的首个元素可以插入到第一个序列的什么位置，因为在此位置之前的序列已经就位了，无需再进行归并
          */
         int k = gallopRight((Comparable<Object>) a[base2], a, base1, len1, 0);
         assert k >= 0;
+        // 因为要忽略前半部分元素，所以起点和长度相应的变化
         base1 += k;
         len1 -= k;
         if (len1 == 0)
@@ -469,6 +533,8 @@ class ComparableTimSort {
         /*
          * Find where the last element of run1 goes in run2. Subsequent elements
          * in run2 can be ignored (because they're already in place).
+         * 跟上面相似，看序列1的最后一个元素(a[base1+len1-1])可以插入到序列2的什么位置（相对第二个序列起点的位置，非在数组中的位置），
+         * 这个位置后面的元素也是不需要参与归并的。所以len2直接设置到这里，后面的元素直接忽略。
          */
         len2 = gallopLeft((Comparable<Object>) a[base1 + len1 - 1], a,
                 base2, len2, len2 - 1);
@@ -477,6 +543,7 @@ class ComparableTimSort {
             return;
 
         // Merge remaining runs, using tmp array with min(len1, len2) elements
+        // 合并剩下的两个有序序列，并且这里为了节省空间，临时数组选用 min(len1,len2)的长度
         if (len1 <= len2)
             mergeLo(base1, len1, base2, len2);
         else
@@ -488,17 +555,28 @@ class ComparableTimSort {
      * specified sorted range; if the range contains an element equal to key,
      * returns the index of the leftmost equal element.
      *
-     * @param key the key whose insertion point to search for
-     * @param a the array in which to search
-     * @param base the index of the first element in the range
-     * @param len the length of the range; must be > 0
+     * 在一个序列中，将一个指定的key，从左往右查找它应当插入的位置；如果序列中存在
+     * 与key相同的值(一个或者多个)，那返回这些值中最左边的位置。
+     *
+     * 推断： 统计概率的原因，随机数字来说，两个待合并的序列的尾假设是差不多大的，从尾开始
+     * 做查找找到的概率高一些。仔细算一下，最差情况下，这种查找也是 log(n)，所以这里没有
+     * 用简单的二分查找。
+     *
+     * @param key the key whose insertion point to search for 准备插入的key
+     * @param a the array in which to search 参与排序的数组
+     * @param base the index of the first element in the range 序列范围的第一个元素的位置
+     * @param len the length of the range; must be > 0  整个范围的长度，一定有len > 0
      * @param hint the index at which to begin the search, 0 <= hint < n.
      *     The closer hint is to the result, the faster this method will run.
+     *             开始查找的位置，有0 <= hint <= len;越接近结果查找越快
      * @return the int k,  0 <= k <= n such that a[b + k - 1] < key <= a[b + k],
      *    pretending that a[b - 1] is minus infinity and a[b + n] is infinity.
      *    In other words, key belongs at index b + k; or in other words,
      *    the first k elements of a should precede key, and the last n - k
      *    should follow it.
+     *    返回一个整数 k, 有 0 <= k <=n, 它满足 a[b + k - 1] < a[b + k]
+     *    就是说key应当被放在 a[base + k],
+     *    有 a[base,base+k) < key && key <=a [base + k, base + len)
      */
     private static int gallopLeft(Comparable<Object> key, Object[] a,
             int base, int len, int hint) {
@@ -506,8 +584,10 @@ class ComparableTimSort {
 
         int lastOfs = 0;
         int ofs = 1;
+        // key > a[base+hint]
         if (key.compareTo(a[base + hint]) > 0) {
             // Gallop right until a[base+hint+lastOfs] < key <= a[base+hint+ofs]
+            // 遍历右边，直到 a[base+hint+lastOfs] < key <= a[base+hint+ofs]
             int maxOfs = len - hint;
             while (ofs < maxOfs && key.compareTo(a[base + hint + ofs]) > 0) {
                 lastOfs = ofs;
@@ -517,12 +597,18 @@ class ComparableTimSort {
             }
             if (ofs > maxOfs)
                 ofs = maxOfs;
+            // 最终的ofs是这样确定的，满足条件 a[base+hint+lastOfs] < key <= a[base+hint+ofs]
+            // 的一组
+            // ofs:     1   3   7  15  31  63 2^n-1 ... maxOfs
+            // lastOfs: 0   1   3   7  15  31 2^(n-1)-1  < ofs
 
             // Make offsets relative to base
+            // 因为目前的offset是相对hint的，所以做相对变换
             lastOfs += hint;
             ofs += hint;
         } else { // key <= a[base + hint]
             // Gallop left until a[base+hint-ofs] < key <= a[base+hint-lastOfs]
+            // 遍历左边，直到[base+hint-ofs] < key <= a[base+hint-lastOfs]
             final int maxOfs = hint + 1;
             while (ofs < maxOfs && key.compareTo(a[base + hint - ofs]) <= 0) {
                 lastOfs = ofs;
@@ -532,6 +618,9 @@ class ComparableTimSort {
             }
             if (ofs > maxOfs)
                 ofs = maxOfs;
+            // 确定ofs的过程与上面相同
+            // ofs:     1   3   7  15  31  63 2^n-1 ... maxOfs
+            // lastOfs: 0   1   3   7  15  31 2^(n-1)-1  < ofs
 
             // Make offsets relative to base
             int tmp = lastOfs;
@@ -544,9 +633,13 @@ class ComparableTimSort {
          * Now a[base+lastOfs] < key <= a[base+ofs], so key belongs somewhere
          * to the right of lastOfs but no farther right than ofs.  Do a binary
          * search, with invariant a[base + lastOfs - 1] < key <= a[base + ofs].
+         *
+         * 现在的情况是 a[base+lastOfs] < key <= a[base+ofs], 所以，key应当在lastOfs的
+         * 右边，又不超过ofs。在base+lastOfs-1到 base+ofs范围内做一次二叉查找。
          */
         lastOfs++;
         while (lastOfs < ofs) {
+            // 二分法查找
             int m = lastOfs + ((ofs - lastOfs) >>> 1);
 
             if (key.compareTo(a[base + m]) > 0)
@@ -561,6 +654,8 @@ class ComparableTimSort {
     /**
      * Like gallopLeft, except that if the range contains an element equal to
      * key, gallopRight returns the index after the rightmost equal element.
+     *
+     * 与gallopLeft相似，不同的是如果发现key的值与某些元素相等，那返回这些值最后一个元素的位置的后一个位置
      *
      * @param key the key whose insertion point to search for
      * @param a the array in which to search
@@ -638,6 +733,13 @@ class ComparableTimSort {
      * its twin, mergeHi should be called if len1 >= len2.  (Either method
      * may be called if len1 == len2.)
      *
+     * 使用固定空间合并两个相邻的有序序列，保持数组的稳定性。
+     * 使用本方法之前保证第一个序列的首个元素大于第二个序列的首个元素；第一个序列的末尾元素
+     * 大于第二个序列的所有元素
+     *
+     * 为了性能，这个方法在len1 <= len2的时候调用；它的姐妹方法mergeHi应该在len1 >= len2
+     * 的时候调用。len1==len2的时候随便调用哪个都可以
+     *
      * @param base1 index of first element in first run to be merged
      * @param len1  length of first run to be merged (must be > 0)
      * @param base2 index of first element in second run to be merged
@@ -652,17 +754,26 @@ class ComparableTimSort {
         Object[] a = this.a; // For performance
         Object[] tmp = ensureCapacity(len1);
 
+        // 临时数组指针
         int cursor1 = tmpBase; // Indexes into tmp array
+        // 序列2的指针，指向参与归并的另一个序列
         int cursor2 = base2;   // Indexes int a
+        // 保存结果的指针
         int dest = base1;      // Indexes int a
+        // 将第一个序列放到临时数组中
         System.arraycopy(a, base1, tmp, cursor1, len1);
 
         // Move first element of second run and deal with degenerate cases
+        // 这里先把第二个序列的首个元素，移动到结果序列中的位置，然后处理那些不需要归并的情况
         a[dest++] = a[cursor2++];
+        // 序列2只有一个元素的情况，把它移动到指定位置之后，剩下的临时数组中的所有序列1的元素全部copy到后面
+        // 这个元素比现在所有序列1的元素都要小
         if (--len2 == 0) {
             System.arraycopy(tmp, cursor1, a, dest, len1);
             return;
         }
+        // 序列1只有一个元素的情况，把它移动到最后一个位置，为了不覆盖，先把序列2中的元素全部移走。
+        // 这个是因为序列1中的最后一个元素比序列2中的所有元素都大，这是该方法执行的条件
         if (len1 == 1) {
             System.arraycopy(a, cursor2, a, dest, len2);
             a[dest + len2] = tmp[cursor1]; // Last elt of run 1 to end of merge
@@ -672,12 +783,15 @@ class ComparableTimSort {
         int minGallop = this.minGallop;  // Use local variable for performance
     outer:
         while (true) {
+            // 这里加了两个值来记录一个序列连续比另外一个大的次数，根据此信息，可以做出一些优化
             int count1 = 0; // Number of times in a row that first run won
             int count2 = 0; // Number of times in a row that second run won
 
             /*
              * Do the straightforward thing until (if ever) one run starts
              * winning consistently.
+             * 这里是直接的归并算法的合并的部分，这里会统计count1合count2,
+             * 如果其中一个大于一个阈值，就会跳出循环
              */
             do {
                 assert len1 > 1 && len2 > 0;
@@ -685,26 +799,38 @@ class ComparableTimSort {
                     a[dest++] = a[cursor2++];
                     count2++;
                     count1 = 0;
+                    // 序列2没有元素了就跳出整次合并
                     if (--len2 == 0)
                         break outer;
                 } else {
                     a[dest++] = tmp[cursor1++];
                     count1++;
                     count2 = 0;
+                    // 如果序列1只剩下最后一个元素了就可以跳出循环
                     if (--len1 == 1)
                         break outer;
                 }
+                /* 这个判断相当于 count1 < minGallop && count2 <minGallop
+                 * 因为count1和count2总有一个为0
+                 * 当其中一个序列连续写入目标位置，即连续比另一个数组大（超过minGallop，默认7次）
+                 * */
             } while ((count1 | count2) < minGallop);
 
             /*
              * One run is winning so consistently that galloping may be a
              * huge win. So try that, and continue galloping until (if ever)
              * neither run appears to be winning consistently anymore.
+             *
+             * 执行到这里的话，一个序列会连续的的比另一个序列大，那么这种连续性可能持续的
+             * 更长。那么我们就按照这个galloping的逻辑试一试。直到这种连续性被打破。根据找到的长度，
+             * 直接连续的copy就可以了，这样可以提高copy的效率。
              */
             do {
                 assert len1 > 1 && len2 > 0;
+                // 再次使用gallopRight判断当前序列2的元素在序列1该插入的位置
                 count1 = gallopRight((Comparable) a[cursor2], tmp, cursor1, len1, 0);
                 if (count1 != 0) {
+                    // 如果有，直接拷贝该位置之前的部分到目标数组的dest
                     System.arraycopy(tmp, cursor1, a, dest, count1);
                     dest += count1;
                     cursor1 += count1;
@@ -716,8 +842,10 @@ class ComparableTimSort {
                 if (--len2 == 0)
                     break outer;
 
+                // 再次使用gallopLeft判断当前序列1的元素在序列2该插入的位置
                 count2 = gallopLeft((Comparable) tmp[cursor1], a, cursor2, len2, 0);
                 if (count2 != 0) {
+                    // 如果有，直接拷贝该位置之前的部分到目标数组的dest
                     System.arraycopy(a, cursor2, a, dest, count2);
                     dest += count2;
                     cursor2 += count2;
@@ -728,10 +856,13 @@ class ComparableTimSort {
                 a[dest++] = tmp[cursor1++];
                 if (--len1 == 1)
                     break outer;
+                // 这里对连续性比另外一个大的阈值减少，这样更容易触发这段操作，
+                // 应该是因为前面的数据表现好，后面的数据类似的可能性更高？
                 minGallop--;
             } while (count1 >= MIN_GALLOP | count2 >= MIN_GALLOP);
             if (minGallop < 0)
                 minGallop = 0;
+            // 同样，这里如果跳出了那段循环，就证明数据的顺序程度不好，应当增加阈值，避免浪费资源
             minGallop += 2;  // Penalize for leaving gallop mode
         }  // End of "outer" loop
         this.minGallop = minGallop < 1 ? 1 : minGallop;  // Write back to field
@@ -741,6 +872,7 @@ class ComparableTimSort {
             System.arraycopy(a, cursor2, a, dest, len2);
             a[dest + len2] = tmp[cursor1]; //  Last elt of run 1 to end of merge
         } else if (len1 == 0) {
+            // 因为序列1中的最后一个值，比序列2中的所有值都大，所以，不可能序列1空了，序列2还有元素
             throw new IllegalArgumentException(
                 "Comparison method violates its general contract!");
         } else {
