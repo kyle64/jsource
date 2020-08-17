@@ -37,6 +37,8 @@ package java.util;
  * necessary array bounds checks and expanding parameters into the
  * required forms.
  *
+ * 源码注释参考：https://www.jianshu.com/p/6d26d525bb96
+ *
  * @author Vladimir Yaroslavskiy
  * @author Jon Bentley
  * @author Josh Bloch
