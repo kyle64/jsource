@@ -33,6 +33,15 @@ import java.util.Set;
 
 /**
  * A multiplexor of {@link SelectableChannel} objects.
+ * 选择器，多路复用器
+ *
+ * 多路复用器提供选择已经就绪的任务的能力。
+ * 简单说，就是Selector会不断的轮询注册在其上的通道（Channel），
+ * 如果某个通道发生了读写操作，这个通道就处于就绪状态，会被Selector轮询出来，
+ * 然后通过SelectionKey可以取得就绪的Channel集合，从而进行后续的IO操作。
+ *
+ * 一个多路复用器（Selector）可以负责成千上万的通道（Channel），没有上限。
+ * 这也是JDK使用了epoll代替传统的select实现，获得连接句柄（客户端）没有限制。
  *
  * <p> A selector may be created by invoking the {@link #open open} method of
  * this class, which will use the system's default {@link
@@ -53,17 +62,20 @@ import java.util.Set;
  *   <li><p> The <i>key set</i> contains the keys representing the current
  *   channel registrations of this selector.  This set is returned by the
  *   {@link #keys() keys} method. </p></li>
+ *   key set当前selector注册的channels
  *
  *   <li><p> The <i>selected-key set</i> is the set of keys such that each
  *   key's channel was detected to be ready for at least one of the operations
  *   identified in the key's interest set during a prior selection operation.
  *   This set is returned by the {@link #selectedKeys() selectedKeys} method.
  *   The selected-key set is always a subset of the key set. </p></li>
+ *   selected-key set当前已经发现有至少一个操作的channels
  *
  *   <li><p> The <i>cancelled-key</i> set is the set of keys that have been
  *   cancelled but whose channels have not yet been deregistered.  This set is
  *   not directly accessible.  The cancelled-key set is always a subset of the
  *   key set. </p></li>
+ *   cancelled-key被取消的channels
  *
  * </ul>
  *
@@ -278,6 +290,8 @@ public abstract class Selector implements Closeable {
      * Selects a set of keys whose corresponding channels are ready for I/O
      * operations.
      *
+     * 非阻塞的选择可用的channels
+     *
      * <p> This method performs a non-blocking <a href="#selop">selection
      * operation</a>.  If no channels have become selectable since the previous
      * selection operation then this method immediately returns zero.
@@ -299,6 +313,8 @@ public abstract class Selector implements Closeable {
     /**
      * Selects a set of keys whose corresponding channels are ready for I/O
      * operations.
+     *
+     * 选择就绪的channels的key的集合，阻塞
      *
      * <p> This method performs a blocking <a href="#selop">selection
      * operation</a>.  It returns only after at least one channel is selected,

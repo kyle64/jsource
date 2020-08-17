@@ -38,14 +38,17 @@ import java.util.Spliterator;
  *
  *   <p> A buffer's <i>capacity</i> is the number of elements it contains.  The
  *   capacity of a buffer is never negative and never changes.  </p>
+ *   容量capacity：缓冲区内的元素个数
  *
  *   <p> A buffer's <i>limit</i> is the index of the first element that should
  *   not be read or written.  A buffer's limit is never negative and is never
  *   greater than its capacity.  </p>
+ *   限制limit：不可读写的限制位置，limit不小于0，不大于capacity
  *
  *   <p> A buffer's <i>position</i> is the index of the next element to be
  *   read or written.  A buffer's position is never negative and is never
  *   greater than its limit.  </p>
+ *   位置position：下一个要读/写的index
  *
  * </blockquote>
  *
@@ -87,6 +90,7 @@ import java.util.Spliterator;
  * position or the limit is adjusted to a value smaller than the mark.  If the
  * mark is not defined then invoking the {@link #reset reset} method causes an
  * {@link InvalidMarkException} to be thrown.
+ * mark标志着reset重置的位置
  *
  *
  * <h2> Invariants </h2>
@@ -120,14 +124,17 @@ import java.util.Spliterator;
  *   <li><p> {@link #clear} makes a buffer ready for a new sequence of
  *   channel-read or relative <i>put</i> operations: It sets the limit to the
  *   capacity and the position to zero.  </p></li>
+ *   clear()方法将缓冲区buffer置为channel读的模式；clear()方法将limit = capacity， position = 0
  *
  *   <li><p> {@link #flip} makes a buffer ready for a new sequence of
  *   channel-write or relative <i>get</i> operations: It sets the limit to the
  *   current position and then sets the position to zero.  </p></li>
+ *   flip()方法将缓冲区buffer置为channel写的模式；flip()方法将limit = current position， position = 0
  *
  *   <li><p> {@link #rewind} makes a buffer ready for re-reading the data that
  *   it already contains: It leaves the limit unchanged and sets the position
  *   to zero.  </p></li>
+ *   rewind()方法将缓冲区buffer置为重读buffer中已有元素的模式；rewind()中limit不变，position = 0
  *
  * </ul>
  *
@@ -141,6 +148,7 @@ import java.util.Spliterator;
  * content to be changed, but its mark, position, and limit values are mutable.
  * Whether or not a buffer is read-only may be determined by invoking its
  * {@link #isReadOnly isReadOnly} method.
+ * isReadOnly标识一个buffer是否为只读的buffer
  *
  *
  * <h2> Thread safety </h2>
@@ -148,6 +156,7 @@ import java.util.Spliterator;
  * <p> Buffers are not safe for use by multiple concurrent threads.  If a
  * buffer is to be used by more than one thread then access to the buffer
  * should be controlled by appropriate synchronization.
+ * Buffer缓冲区不是线程安全的，如果要复用的话，需要做好同步
  *
  *
  * <h2> Invocation chaining </h2>
@@ -155,6 +164,7 @@ import java.util.Spliterator;
  * <p> Methods in this class that do not otherwise have a value to return are
  * specified to return the buffer upon which they are invoked.  This allows
  * method invocations to be chained; for example, the sequence of statements
+ * 方法支持链式调用
  *
  * <blockquote><pre>
  * b.flip();
@@ -229,6 +239,7 @@ public abstract class Buffer {
     /**
      * Sets this buffer's position.  If the mark is defined and larger than the
      * new position then it is discarded.
+     * 修改position
      *
      * @param  newPosition
      *         The new position value; must be non-negative
@@ -243,6 +254,7 @@ public abstract class Buffer {
         if ((newPosition > limit) || (newPosition < 0))
             throw new IllegalArgumentException();
         position = newPosition;
+        // 如果mark大于新的position，舍弃mark
         if (mark > position) mark = -1;
         return this;
     }
@@ -260,6 +272,7 @@ public abstract class Buffer {
      * Sets this buffer's limit.  If the position is larger than the new limit
      * then it is set to the new limit.  If the mark is defined and larger than
      * the new limit then it is discarded.
+     * 修改limit
      *
      * @param  newLimit
      *         The new limit value; must be non-negative
@@ -274,6 +287,7 @@ public abstract class Buffer {
         if ((newLimit > capacity) || (newLimit < 0))
             throw new IllegalArgumentException();
         limit = newLimit;
+        // 如果position大于新的limit，将position = limit
         if (position > limit) position = limit;
         if (mark > limit) mark = -1;
         return this;
@@ -281,6 +295,7 @@ public abstract class Buffer {
 
     /**
      * Sets this buffer's mark at its position.
+     * 将mark = position
      *
      * @return  This buffer
      */
@@ -291,6 +306,7 @@ public abstract class Buffer {
 
     /**
      * Resets this buffer's position to the previously-marked position.
+     * 将buffer的position重置到上一个mark的位置，不改变mark的值
      *
      * <p> Invoking this method neither changes nor discards the mark's
      * value. </p>
@@ -311,6 +327,7 @@ public abstract class Buffer {
     /**
      * Clears this buffer.  The position is set to zero, the limit is set to
      * the capacity, and the mark is discarded.
+     * clear缓冲区，position = 0，limit = capacity，mark = -1，channel-read或者put之前调用
      *
      * <p> Invoke this method before using a sequence of channel-read or
      * <i>put</i> operations to fill this buffer.  For example:
@@ -336,6 +353,7 @@ public abstract class Buffer {
      * Flips this buffer.  The limit is set to the current position and then
      * the position is set to zero.  If the mark is defined then it is
      * discarded.
+     * flip缓冲区，limit = position，position = 0，mark = -1，channel-write或者relative get之前调用
      *
      * <p> After a sequence of channel-read or <i>put</i> operations, invoke
      * this method to prepare for a sequence of channel-write or relative
@@ -363,6 +381,7 @@ public abstract class Buffer {
     /**
      * Rewinds this buffer.  The position is set to zero and the mark is
      * discarded.
+     * 在channel-write或者absolute get之前调用
      *
      * <p> Invoke this method before a sequence of channel-write or <i>get</i>
      * operations, assuming that the limit has already been set

@@ -32,11 +32,13 @@ import java.nio.channels.spi.SelectorProvider;
 
 /**
  * A channel that can be multiplexed via a {@link Selector}.
+ * 用于网络读写，可以通过Selector实现多路复用的channel
  *
  * <p> In order to be used with a selector, an instance of this class must
  * first be <i>registered</i> via the {@link #register(Selector,int,Object)
  * register} method.  This method returns a new {@link SelectionKey} object
  * that represents the channel's registration with the selector.
+ * 为了使用selector，SelectableChannel实例必须先注册一个selector
  *
  * <p> Once registered with a selector, a channel remains registered until it
  * is <i>deregistered</i>.  This involves deallocating whatever resources were
@@ -50,18 +52,23 @@ import java.nio.channels.spi.SelectorProvider;
  * implicitly when the channel is closed, whether by invoking its {@link
  * Channel#close close} method or by interrupting a thread blocked in an I/O
  * operation upon the channel.
+ * 通道channel不能直接被注销；表示一个Selector注册的SelectionKey必须处于'取消'状态，可以调用cancel()方法。
+ * 当通道channel关闭的时候，所有的key都会cancel，不论是调用Channel.close()方法还是中断等待的线程
  *
  * <p> If the selector itself is closed then the channel will be deregistered,
  * and the key representing its registration will be invalidated, without
  * further delay.
+ * 如果selector关闭了，那么channel也会注销deregistered，对应的key就会invalidated
  *
  * <p> A channel may be registered at most once with any particular selector.
+ * 一个channel最多被特定的selector注册一次
  *
  * <p> Whether or not a channel is registered with one or more selectors may be
  * determined by invoking the {@link #isRegistered isRegistered} method.
  *
  * <p> Selectable channels are safe for use by multiple concurrent
  * threads. </p>
+ * Selectable channels是线程安全的
  *
  *
  * <a name="bm"></a>

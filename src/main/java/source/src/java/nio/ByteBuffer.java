@@ -551,6 +551,7 @@ public abstract class ByteBuffer
     /**
      * Relative <i>get</i> method.  Reads the byte at this buffer's
      * current position, and then increments the position.
+     * 读取position位置，并增加position
      *
      * @return  The byte at the buffer's current position
      *
@@ -581,6 +582,7 @@ public abstract class ByteBuffer
     /**
      * Absolute <i>get</i> method.  Reads the byte at the given
      * index.
+     * 根据index读取
      *
      * @param  index
      *         The index from which the byte will be read
