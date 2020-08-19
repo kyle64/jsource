@@ -1030,6 +1030,11 @@ public abstract class ByteBuffer
     /**
      * Compacts this buffer&nbsp;&nbsp;<i>(optional operation)</i>.
      *
+     * compact()方法将所有未读的数据拷贝到Buffer起始处。
+     * 然后将position设到最后一个未读元素正后面。
+     * limit属性依然像clear()方法一样，设置成capacity。
+     * 现在Buffer准备好写数据了，但是不会覆盖未读的数据。
+     *
      * <p> The bytes between the buffer's current position and its limit,
      * if any, are copied to the beginning of the buffer.  That is, the
      * byte at index <i>p</i>&nbsp;=&nbsp;<tt>position()</tt> is copied
